@@ -1,0 +1,357 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:orginizeapp/core/providers/category_provider.dart';
+import 'package:provider/provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/models/category_model.dart';
+import '../../../core/models/item_model.dart';
+import '../../../core/models/product_model.dart';
+import '../../../core/models/vendor_model.dart';
+import '../../../core/services/vendor_service.dart';
+import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/responsive_widgets.dart';
+import '../widgets/product_card.dart';
+
+class CategoryProductsScreen extends StatefulWidget {
+  final CategoryModel category;
+  final String? initialSearchQuery;
+
+  const CategoryProductsScreen({
+    super.key,
+    required this.category,
+    this.initialSearchQuery,
+  });
+
+  @override
+  State<CategoryProductsScreen> createState() => _CategoryProductsScreenState();
+}
+
+class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
+  late CategoryModel _selectedCategory;
+  String _sortBy = 'popularity';
+  List<ItemModel> _items = [];
+  bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = widget.category;
+    if (widget.initialSearchQuery != null) {
+      _searchController.text = widget.initialSearchQuery!;
+      _searchQuery = widget.initialSearchQuery!;
+    }
+    _loadItems();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onCategorySelected(CategoryModel category) {
+    if (_selectedCategory.id == category.id) return;
+    setState(() {
+      _selectedCategory = category;
+      _isLoading = true;
+    });
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    try {
+      Stream<List<ItemModel>> stream;
+      if (_selectedCategory.id == 'all') {
+        stream = VendorService.getAllAvailableItems();
+      } else {
+        stream = VendorService.getItemsByCategory(_selectedCategory.name);
+      }
+
+      stream.listen((items) {
+        if (mounted) {
+          setState(() {
+            _items = items;
+            _isLoading = false;
+            _sortItems(); // Apply current sorting
+          });
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  List<ItemModel> _getFilteredItems() {
+    if (_searchQuery.isEmpty) return _items;
+    return _items.where((item) {
+      return item.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          item.description.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+  }
+
+  void _sortItems() {
+    setState(() {
+      switch (_sortBy) {
+        case 'price_low':
+          _items.sort((a, b) => a.price.compareTo(b.price));
+          break;
+        case 'price_high':
+          _items.sort((a, b) => b.price.compareTo(a.price));
+          break;
+        case 'popularity':
+        default:
+          // Keep original order
+          break;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredItems = _getFilteredItems();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_selectedCategory.name),
+        actions: [
+          PopupMenuButton<String>(
+            initialValue: _sortBy,
+            onSelected: (value) {
+              if (value == 'all_categories') {
+                // Switch to 'All' category
+                _onCategorySelected(CategoryModel(
+                  id: 'all',
+                  name: 'All Products',
+                  icon: '🛍️',
+                  color: AppColors.primary,
+                  description: 'All available products',
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                  isActive: true,
+                  emergencyDeliveryMinutes: 0,
+                  pricing: PricingConfig(commissionPercent: 0),
+                  delivery: DeliveryConfig(),
+                  inventory: InventoryConfig(),
+                ));
+                return;
+              }
+              setState(() {
+                _sortBy = value;
+                _sortItems();
+              });
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'popularity',
+                child: Text('Sort by Popularity'),
+              ),
+              const PopupMenuItem(
+                value: 'price_low',
+                child: Text('Price: Low to High'),
+              ),
+              const PopupMenuItem(
+                value: 'price_high',
+                child: Text('Price: High to Low'),
+              ),
+              const PopupMenuItem(
+                value: 'all_categories',
+                child: Text('View All Categories'),
+              ),
+            ],
+            icon: const Icon(Icons.sort),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(120.h),
+          child: Column(
+            children: [
+              // Category Tabs
+              Consumer<CategoryProvider>(
+                builder: (context, categoryProvider, child) {
+                  final categories = categoryProvider.categories
+                      .where((c) => c.isActive)
+                      .toList();
+
+                  // Create "All" category model for the chip
+                  final allCategory = CategoryModel(
+                    id: 'all',
+                    name: 'All',
+                    icon: 'all',
+                    color: AppColors.primary,
+                    description: 'All available products',
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                    isActive: true,
+                    emergencyDeliveryMinutes: 0,
+                    pricing: PricingConfig(commissionPercent: 0),
+                    delivery: DeliveryConfig(),
+                    inventory: InventoryConfig(),
+                  );
+
+                  return SizedBox(
+                    height: 50.h,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      itemCount: categories.length + 1, // +1 for "All"
+                      itemBuilder: (context, index) {
+                        final cat =
+                            index == 0 ? allCategory : categories[index - 1];
+                        final isSelected = cat.id == _selectedCategory.id;
+                        return Padding(
+                          padding: EdgeInsets.only(right: 8.w),
+                          child: ChoiceChip(
+                            label: Text(cat.name),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              if (selected) _onCategorySelected(cat);
+                            },
+                            avatar: index == 0
+                                ? const Icon(Icons.apps, size: 18)
+                                : Text(cat.icon),
+                            selectedColor: AppColors.primary
+                                .withValues(alpha: 0.2), // Fixed withValues
+                            labelStyle: TextStyle(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+              SizedBox(height: 8.h),
+              Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.inputBackground,
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search in ${_selectedCategory.name}...',
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: AppColors.textSecondary,
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16.w,
+                        vertical: 14.h,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : filteredItems.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _searchQuery.isEmpty ? _selectedCategory.icon : '🔍',
+                        style: TextStyle(fontSize: 60.sp),
+                      ),
+                      SizedBox(height: 16.h),
+                      Text(
+                        _searchQuery.isEmpty
+                            ? 'No items available in ${_selectedCategory.name}'
+                            : 'No items found matching "$_searchQuery"',
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      if (_searchQuery.isEmpty) ...[
+                        SizedBox(height: 8.h),
+                        Text(
+                          'Vendors can add items to this category',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 16.h),
+                        ElevatedButton(
+                          onPressed: _loadItems,
+                          child: const Text('Refresh'),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              : GridView.builder(
+                  padding: EdgeInsets.all(16.w),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.62, // Taller cards to prevent overflow
+                    crossAxisSpacing: 12.w,
+                    mainAxisSpacing: 12.h,
+                  ),
+                  itemCount: filteredItems.length,
+                  itemBuilder: (context, index) {
+                    final item = filteredItems[index];
+                    // Convert ItemModel to ProductModel for ProductCard
+                    final product = ProductModel(
+                      id: item.id,
+                      vendorId: item.vendorId,
+                      name: item.name,
+                      description: item.description,
+                      category: item.category,
+                      price: item.price,
+                      unit: 'piece',
+                      quantity: item.quantity,
+                      images: item.imageUrl != null ? [item.imageUrl!] : [],
+                      createdAt: item.createdAt,
+                      updatedAt: item.updatedAt,
+                    );
+
+                    return FutureBuilder<VendorModel?>(
+                      future: VendorService.getVendor(item.vendorId),
+                      builder: (context, vendorSnapshot) {
+                        final vendorName =
+                            vendorSnapshot.data?.businessName ?? 'Vendor';
+                        return ProductCard(
+                          product: product,
+                          vendorName: vendorName,
+                        );
+                      },
+                    );
+                  },
+                ),
+    );
+  }
+}
