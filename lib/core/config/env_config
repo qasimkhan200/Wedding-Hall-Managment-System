@@ -1,0 +1,24 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+class EnvConfig {
+  static String get mapboxAccessToken =>
+      dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? '';
+  static String get firebaseApiKey => dotenv.env['FIREBASE_API_KEY'] ?? '';
+  static String get googlePlacesApiKey =>
+      dotenv.env['GOOGLE_PLACES_API_KEY'] ?? '';
+  static String get oneSignalAppId => dotenv.env['ONESIGNAL_APP_ID'] ?? '';
+
+  /// Base URL of the custom Node.js storage backend.
+  /// e.g. http://10.0.2.2:3000 for Android emulator, http://localhost:3000 for web/iOS sim
+  static String get storageBackendUrl =>
+      dotenv.env['STORAGE_BACKEND_URL'] ?? 'http://localhost:3000';
+
+  /// Optional API key for the storage backend (leave empty to disable auth).
+  static String get storageApiKey => dotenv.env['STORAGE_API_KEY'] ?? '';
+
+  static Future<void> load() async {
+    await dotenv.load(fileName: ".env");
+  }
+
+  static bool get isMapboxConfigured => mapboxAccessToken.isNotEmpty;
+}
