@@ -1,0 +1,112 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import '../../../core/theme/app_colors.dart';
+
+class RatingDialog extends StatefulWidget {
+  final String title;
+  final String message;
+  final String submitButtonText;
+  final Function(double rating, String comment) onSubmit;
+
+  const RatingDialog({
+    super.key,
+    required this.title,
+    required this.message,
+    this.submitButtonText = 'Submit Review',
+    required this.onSubmit,
+  });
+
+  @override
+  State<RatingDialog> createState() => _RatingDialogState();
+}
+
+class _RatingDialogState extends State<RatingDialog> {
+  double _rating = 0;
+  final TextEditingController _commentController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.message),
+            const SizedBox(height: 16),
+            Center(
+              child: RatingBar.builder(
+                initialRating: 0,
+                minRating: 1,
+                direction: Axis.horizontal,
+                allowHalfRating: true,
+                itemCount: 5,
+                itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
+                itemBuilder: (context, _) => const Icon(
+                  Icons.star,
+                  color: Colors.amber,
+                ),
+                onRatingUpdate: (rating) {
+                  setState(() {
+                    _rating = rating;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _commentController,
+              decoration: const InputDecoration(
+                labelText: 'Comment (Optional)',
+                border: OutlineInputBorder(),
+                hintText: 'Share your experience...',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isSubmitting || _rating == 0
+              ? null
+              : () async {
+                  setState(() => _isSubmitting = true);
+                  try {
+                    await widget.onSubmit(_rating, _commentController.text);
+                    if (mounted) Navigator.of(context).pop();
+                  } finally {
+                    if (mounted) setState(() => _isSubmitting = false);
+                  }
+                },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(widget.submitButtonText),
+        ),
+      ],
+    );
+  }
+}
