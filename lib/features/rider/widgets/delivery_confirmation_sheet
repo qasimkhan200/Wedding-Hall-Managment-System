@@ -1,0 +1,174 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/models/order_model.dart';
+import '../../../core/services/storage_service.dart';
+
+class DeliveryConfirmationSheet extends StatefulWidget {
+  final OrderModel order;
+  final VoidCallback onSuccess;
+
+  const DeliveryConfirmationSheet({
+    super.key,
+    required this.order,
+    required this.onSuccess,
+  });
+
+  @override
+  State<DeliveryConfirmationSheet> createState() =>
+      _DeliveryConfirmationSheetState();
+}
+
+class _DeliveryConfirmationSheetState extends State<DeliveryConfirmationSheet> {
+  File? _image;
+  final _picker = ImagePicker();
+  bool _isUploading = false;
+  String? _error;
+
+  Future<void> _takePhoto() async {
+    try {
+      final pickedFile = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 70,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _image = File(pickedFile.path);
+          _error = null;
+        });
+      }
+    } catch (e) {
+      setState(() => _error = 'Failed to take photo: $e');
+    }
+  }
+
+  Future<void> _confirmDelivery() async {
+    if (_image == null) {
+      setState(() => _error = 'Photo proof is mandatory');
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+      _error = null;
+    });
+
+    try {
+      await StorageService.uploadOrderProof(
+        file: _image!,
+        orderId: widget.order.id,
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onSuccess();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Delivery confirmed successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _error = 'Upload failed: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Confirm Delivery',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTap: _isUploading ? null : _takePhoto,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: AppColors.inputBackground,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _error != null ? AppColors.error : AppColors.accent,
+                  width: 2,
+                ),
+                image: _image != null
+                    ? DecorationImage(
+                        image: FileImage(_image!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: _image == null
+                  ? const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.camera_alt,
+                            size: 40, color: AppColors.accent),
+                        SizedBox(height: 8),
+                        Text(
+                          'Tap to Take Photo',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_error != null)
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.error),
+              textAlign: TextAlign.center,
+            )
+          else
+            const Text(
+              'Please take a photo as proof of delivery',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isUploading ? null : _confirmDelivery,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                disabledBackgroundColor: AppColors.textSecondary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: _isUploading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Confirm Delivery'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
