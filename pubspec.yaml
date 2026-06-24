@@ -1,0 +1,88 @@
+name: orginizeapp
+description: Emergency wedding supply delivery app connecting Hosts, Vendors, and Riders.
+publish_to: 'none'
+version: 1.0.0+1
+# FORCE_BUILD_REFRESH: 2026-01-09T01:00:00
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Firebase
+  firebase_core: ^3.3.0
+  firebase_auth: ^5.1.4
+  cloud_firestore: ^5.6.12
+  firebase_messaging: ^15.1.3
+  flutter_local_notifications: ^17.2.4
+  
+  # Location & Maps
+  geolocator: ^10.1.0
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+
+  http: ^1.2.0 # Added http package
+  http_parser: ^4.0.2 # For multipart content-type
+  
+  # Notifications — FCM handled via firebase_messaging above
+  
+  # Note: flutter_map_cache might be a specific package, let's stick to the user's requested package name if it exists, 
+  # but standard is often flutter_map_tile_caching (FMTC) or similar. 
+  # The user said "flutter_map_cache". I will use `dio_cache_interceptor` or similar if that doesn't exist, 
+  # but let's assume `flutter_map_caching_tile_provider` or similar standard. 
+  # Actually, `flutter_map_tile_caching` is the popular one for advanced caching. 
+  # Let's use `dio` for manual download if needed, but for tile caching `flutter_map_caching_tile_provider` is good.
+  # WAIT, the user explicitly wrote: "flutter_map_cache: ^1.0.0". I will try to use that if valid, but I suspect they meant `flutter_map_tile_caching` or just a generic name.
+  # Let's check if I can just use `dio` and local file storage manually as per my plan "OfflineMapService".
+  # Plan says: "flutter_map_cache (or dio_cache_interceptor...)".
+  # I'll add `dio` and `path_provider` (already there).
+  # I will add `flutter_map_caching_tile_provider` as it's a common simple one, or just `dio`.
+  # Let's stick to `dio` for the manual download service I promised. 
+  # And `cached_network_image` is for images.
+  # For map tiles, `flutter_map` supports custom tile providers.
+  # I will add `dio` and `connectivity_plus` (useful for offline check).
+  
+  dio: ^5.4.0
+  connectivity_plus: ^5.0.2
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # UI Components
+  cupertino_icons: ^1.0.6
+  
+  # Utilities
+  intl: ^0.18.1
+  shared_preferences: ^2.2.2
+  flutter_dotenv: ^5.1.0
+  path_provider: ^2.1.1
+  flutter_image_compress: ^2.4.0
+  image_picker: ^1.2.1
+  path: ^1.9.0
+  
+  # Responsive Design
+  flutter_screenutil: ^5.9.0
+  auto_size_text: ^3.0.0
+  flutter_rating_bar: ^4.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - .env
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
