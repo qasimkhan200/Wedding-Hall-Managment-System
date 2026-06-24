@@ -1,0 +1,200 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/services/rider_service.dart';
+import '../../../core/models/rider_model.dart';
+
+class EditRiderProfileScreen extends StatefulWidget {
+  final RiderModel? riderProfile;
+
+  const EditRiderProfileScreen({super.key, this.riderProfile});
+
+  @override
+  State<EditRiderProfileScreen> createState() => _EditRiderProfileScreenState();
+}
+
+class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _vehicleTypeController;
+  late TextEditingController _vehicleNumberController;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = Provider.of<AuthProvider>(context, listen: false).user;
+    _nameController = TextEditingController(text: user?.name ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _vehicleTypeController =
+        TextEditingController(text: widget.riderProfile?.vehicleType ?? '');
+    _vehicleNumberController =
+        TextEditingController(text: widget.riderProfile?.vehicleNumber ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _vehicleTypeController.dispose();
+    _vehicleNumberController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.user;
+
+      if (user == null) throw 'User not found';
+
+      // 1. Update User Profile (Name, Phone)
+      bool userUpdated = false;
+      if (user.name != _nameController.text ||
+          user.phone != _phoneController.text) {
+        await AuthService.updateProfile(
+          userId: user.id,
+          name: _nameController.text,
+          phone: _phoneController.text,
+        );
+        userUpdated = true;
+      }
+
+      // 2. Update Rider Profile
+      // RiderService.updateProfile updates fields in the same user document
+      await RiderService.updateProfile(
+        riderId: user.id,
+        name: _nameController.text,
+        phone: _phoneController.text,
+        vehicleType: _vehicleTypeController.text,
+        vehicleNumber: _vehicleNumberController.text,
+      );
+
+      if (userUpdated) {
+        await authProvider.loadUserData();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully')),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating profile: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Edit Rider Profile',
+            style: TextStyle(color: AppColors.primary)),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Personal Details',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.accent,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Name is required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Phone is required' : null,
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Vehicle Details',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.accent,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _vehicleTypeController,
+                decoration: const InputDecoration(
+                  labelText: 'Vehicle Type (e.g. Bike, Scooter)',
+                  prefixIcon: Icon(Icons.two_wheeler_outlined),
+                ),
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Vehicle Type is required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _vehicleNumberController,
+                decoration: const InputDecoration(
+                  labelText: 'Vehicle Number',
+                  prefixIcon: Icon(Icons.confirmation_number_outlined),
+                ),
+                validator: (value) => value?.isEmpty ?? true
+                    ? 'Vehicle Number is required'
+                    : null,
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Save Changes'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
