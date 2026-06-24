@@ -1,0 +1,68 @@
+class AppConstants {
+  // App Info
+  static const String appName = "Let's Organize It";
+  static const String appVersion = "1.0.0";
+  static const String appTagline = "Emergency Wedding Supplies, Delivered Fast!";
+  
+  // Delivery Constants
+  static const int estimatedDeliveryMinutes = 30;
+  static const int maxDeliveryRadius = 15; // in kilometers
+  static const double deliveryFeePerKm = 10.0;
+  static const double minimumOrderAmount = 500.0;
+  
+  // Order Status
+  static const String statusPending = "pending";
+  static const String statusAccepted = "accepted";
+  static const String statusPreparing = "preparing";
+  static const String statusPickedUp = "picked_up";
+  static const String statusInTransit = "in_transit";
+  static const String statusDelivered = "delivered";
+  static const String statusCancelled = "cancelled";
+  
+  // User Roles
+  static const String roleHost = "host";
+  static const String roleVendor = "vendor";
+  static const String roleRider = "rider";
+  static const String roleAdmin = "admin";
+  
+  // Categories
+  static const List<String> categories = [
+    'Chairs & Tables',
+    'Crockery & Utensils',
+    'Ice & Beverages',
+    'Fuel & Gas',
+    'Decor Items',
+    'Manpower',
+  ];
+  
+  // Firebase Collections
+  static const String usersCollection = "users";
+  static const String vendorsCollection = "vendors";
+  static const String ridersCollection = "riders";
+  static const String productsCollection = "products";
+  static const String ordersCollection = "orders";
+  static const String categoriesCollection = "categories";
+  static const String reviewsCollection = "reviews";
+  static const String notificationsCollection = "notifications";
+  
+  // Shared Preferences Keys
+  static const String prefUserToken = "user_token";
+  static const String prefUserRole = "user_role";
+  static const String prefUserId = "user_id";
+  static const String prefOnboardingComplete = "onboarding_complete";
+  static const String prefNotificationsEnabled = "notifications_enabled";
+  
+  // Error Messages
+  static const String errorGeneric = "Something went wrong. Please try again.";
+  static const String errorNoInternet = "No internet connection. Please check your network.";
+  static const String errorInvalidCredentials = "Invalid email or password.";
+  static const String errorWeakPassword = "Password must be at least 6 characters.";
+  static const String errorEmailInUse = "This email is already registered.";
+  static const String errorUserNotFound = "No user found with this email.";
+  
+  // Success Messages
+  static const String successOrderPlaced = "Order placed successfully!";
+  static const String successOrderAccepted = "Order accepted!";
+  static const String successDelivered = "Order delivered successfully!";
+  static const String successProfileUpdated = "Profile updated successfully!";
+}
